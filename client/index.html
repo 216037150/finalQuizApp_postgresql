@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div id="name-prompt">
+            <h2>Welcome to the Quiz!</h2>
+            <input type="text" id="player-name" placeholder="Enter your name...">
+            <label for="email">Email</label>
+            <input type="email" id="emailInput" placeholder="Enter your email..." required>
+            <button id="start-btn">Start Quiz</button>
+        </div>
+
+        <div id="quiz-container" class="hidden">
+            <h2 id="myName"></h2>
+            <h2 id="question"></h2>
+            <div id="options"></div>
+            <button id="next-btn" class="hidden">Next</button>
+        </div>
+
+        <div id="result-container" class="hidden">
+            <h2>Quiz Complete!</h2>
+            <p id="result-text"></p>
+            <div id="scores-list"></div>
+            <button id="restart-btn">Play Again</button>
+        </div>
+    </div>
+    <script>
+        function validatePlayerName(playerName) {
+            if (!playerName || playerName.match(/^\s+$/)) {
+                throw new Error('Please enter your name');
+            } else if (playerName.match(/^\d+$/)) {
+                throw new Error('Invalid input: Please enter a valid name, not a number.');
+            } else if (playerName.match(/[^a-zA-Z0-9\s]/)) {
+                throw new Error('Invalid input: Please do not use special characters.');
+            }
+        }
+
+        const questions = [
+            {
+                question: "What is the capital of France?",
+                options: ["London", "Berlin", "Paris", "Madrid"],
+                correct: 2
+            },
+            {
+                question: "Which planet is known as the Red Planet?",
+                options: ["Venus", "Mars", "Jupiter", "Saturn"],
+                correct: 1
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let currentPlayerName = '';
+
+        function startQuiz() {
+            const playerName = document.getElementById('player-name').value.trim();
+            const email = document.getElementById('emailInput').value.trim();
+
+
+            if (!playerName || !email) {
+                alert('Please enter both a username and an email before starting the quiz.');
+                return;
+            }
+
+            function validateEmail(email) {
+                const emailRegex = /^[a-zA-Z0-9_.±]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$/
+                if (!emailRegex.test(email)) {
+                    alert('Invalid email ...');
+                    return;
+                }
+            }
+            
+            try {
+                validateEmail(email)
+                validatePlayerName(playerName);
+                currentPlayerName = playerName;
+
+                document.getElementById('name-prompt').classList.add('hidden');
+                document.getElementById('quiz-container').classList.remove('hidden');
+
+                loadQuestion();
+                displayGreeting();
+                nextButton();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+
+        function loadQuestion() {
+            const question = questions[currentQuestion];
+            document.getElementById('question').textContent = question.question;
+            const optionsContainer = document.getElementById('options');
+            optionsContainer.innerHTML = '';
+
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.className = 'option-btn';
+                button.addEventListener('click', () => checkAnswer(index));
+                optionsContainer.appendChild(button);
+            });
+
+            document.getElementById('next-btn').classList.add('hidden');
+        }
+
+        function displayGreeting() {
+            document.getElementById('myName').textContent = `Hello, ${currentPlayerName}!`;
+        }
+
+        function nextButton() {
+            document.getElementById('next-btn').addEventListener('click', () => {
+                currentQuestion++;
+                if (currentQuestion >= questions.length) {
+                    endQuiz();
+                } else {
+                    loadQuestion();
+                    document.getElementById('next-btn').classList.add('hidden');
+                }
+            });
+        }
+
+        function checkAnswer(selectedOption) {
+            if (selectedOption === questions[currentQuestion].correct) {
+                score++;
+            }
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function endQuiz() {
+            const totalQuestions = questions.length;
+            const email = document.getElementById('emailInput').value.trim();
+
+            if (!currentPlayerName || score == null || !totalQuestions || !email) {
+                console.error('All fields are required to submit score.');
+                alert('Please fill in all required fields!');
+                return;
+            }
+            let date = new Date();
+            let percent = ((score / totalQuestions) * 100).toFixed(2);
+
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('result-container').classList.remove('hidden');
+            document.getElementById('result-text').textContent = `${currentPlayerName} scored ${score} out of ${totalQuestions} (${percent}%)`;
+
+
+            saveScoreToServer(currentPlayerName, score, totalQuestions, percent, email, date);
+            // displayHighScores();
+        }
+
+        async function saveScoreToServer(name, score, totalQuestions, percent, email, date) {
+            try {
+                const response = await fetch('http://localhost:3000/submit-score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, score, totalQuestions, percent, email, date })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to save score');
+                }
+                console.log(result.message);
+            } catch (error) {
+                console.error('Error saving score:', error.message);
+            }
+        }
+
+
+        async function displayHighScores() {
+            const scoresList = document.getElementById('scores-list');
+            scoresList.innerHTML = '<h3>High Scores</h3>';
+
+            try {
+                const response = await fetch('/high-scores');
+                if (!response.ok) throw new Error('Failed to fetch high scores');
+
+                const highScores = await response.json();
+                highScores.forEach((scoreData, index) => {
+                    const scoreElement = document.createElement('div');
+                    scoreElement.className = 'score-item';
+                    scoreElement.textContent = `${index + 1}. ${scoreData.name} - ${scoreData.score} points (${new Date(scoreData.date).toLocaleDateString()})`;
+                    scoresList.appendChild(scoreElement);
+                });
+            } catch (error) {
+                console.error('Error fetching high scores:', error);
+                alert('Failed to load high scores. Please try again later.');
+            }
+        }
+
+        function init() {
+            document.getElementById('start-btn').addEventListener('click', startQuiz);
+            document.getElementById('restart-btn').addEventListener('click', resetQuiz);
+        }
+
+        function resetQuiz() {
+            currentQuestion = 0;
+            score = 0;
+            document.getElementById('name-prompt').classList.remove('hidden');
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('result-container').classList.add('hidden');
+            document.getElementById('player-name').value = '';
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
