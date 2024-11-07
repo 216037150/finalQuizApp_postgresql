@@ -8,14 +8,14 @@ import { questions } from '../UtilFiles/quizQuestions.js';
 
 const { Client } = pkg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = 3000;
+const PORT = 5050;
 const app = express();
 
 
 const db = new Client({
-    user: 'siyabonga',
+    user: 'Siyabonga',
     host: 'localhost',
-    database: 'quiz_app_db',
+    database: 'quiz_app',
     password: 'Siya@100',
     port: 5432,
 });
@@ -57,7 +57,7 @@ async function saveScoreToDb(name, score, totalQuestions, percent, date, email) 
     `;
     try {
         const result = await db.query(query, [name, score, totalQuestions, percent, date, email]);
-        // console.log('Inserted row:', result.rows[0]);
+        console.log('Inserted row:', result.rows[0])
         return result.rows[0];
     } catch (error) {
         console.error('Error during database insert:', error.message);
@@ -69,10 +69,10 @@ async function saveScoreToDb(name, score, totalQuestions, percent, date, email) 
 app.post('/submit-score', async (req, res) => {
     const {name, score, totalQuestions, percent, date, email } = req.body;
     // console.log('Received data:', req.body);
-    if (!name || !score|| !totalQuestions || !email||!percent||!date) {
-        console.error('All fields (name, score, totalQuestions, percent, date, email) are required.');
-        return res.status(400).json({ error: 'All fields (name, score, percent, email, date) are required' });
-    }
+    // if (!name || !score|| !totalQuestions || !email||!percent||!date) {
+    //     console.error('All fields (name, score, totalQuestions, percent, date, email) are required.');
+    //     return res.status(400).json({ error: 'All fields (name, score, percent, email, date) are required' });
+    // }
 
     try {
         await saveScoreToDb(name, score, totalQuestions, percent, date, email);
